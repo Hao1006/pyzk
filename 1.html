@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>濮阳中招体育成绩计算器</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        h1 { text-align: center; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        select, input { margin: 5px; padding: 8px; width: 200px; border: 1px solid #ccc; }
+        button { background: #007bff; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; }
+        #finalScore { font-size: 24px; color: #28a745; font-weight: bold; text-align: center; }
+        .score { color: #ff5722; margin-left: 10px; }
+        .input-group { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>濮阳中招体育成绩计算器</h1>
+
+    <!-- 性别选择 -->
+    <div class="section">
+        <h3>性别选择</h3>
+        <select id="gender">
+            <option value="男子">男子</option>
+            <option value="女子">女子</option>
+        </select>
+    </div>
+
+    <!-- 必考项目 -->
+    <div class="section">
+        <h3>必考项目（1000米/800米）</h3>
+        <div class="input-group">
+            <input type="number" id="run_min" placeholder="分钟" min="0"> 分
+            <input type="number" id="run_sec" placeholder="秒钟" min="0" max="59"> 秒
+            <span class="score" id="run_score">得分：0</span>
+        </div>
+    </div>
+
+    <!-- 素质项目 -->
+    <div class="section">
+        <h3>素质项目（四选二）</h3>
+        <div class="input-group">
+            <select id="quality1" onchange="createInput('quality1')">
+                <option value="">-- 请选择 --</option>
+                <option value="跳绳">跳绳</option>
+                <option value="实心球">实心球</option>
+                <option value="立定跳远">立定跳远</option>
+                <option value="坐位体前屈">坐位体前屈</option>
+            </select>
+            <div id="quality1_input" class="input-group"></div>
+            <span class="score" id="quality1_score">得分：0</span>
+        </div>
+
+        <div class="input-group">
+            <select id="quality2" onchange="createInput('quality2')">
+                <option value="">-- 请选择 --</option>
+                <option value="跳绳">跳绳</option>
+                <option value="实心球">实心球</option>
+                <option value="立定跳远">立定跳远</option>
+                <option value="坐位体前屈">坐位体前屈</option>
+            </select>
+            <div id="quality2_input" class="input-group"></div>
+            <span class="score" id="quality2_score">得分：0</span>
+        </div>
+    </div>
+
+    <!-- 专项技能 -->
+    <div class="section">
+        <h3>专项技能（六选一）</h3>
+        <div class="input-group">
+            <select id="special" onchange="createInput('special')">
+                <option value="">-- 请选择 --</option>
+                <option value="足球">足球</option>
+                <option value="篮球">篮球</option>
+                <option value="乒乓球">乒乓球</option>
+                <option value="排球">排球</option>
+                <option value="游泳">游泳</option>
+                <option value="轮滑">轮滑</option>
+            </select>
+            <div id="special_input" class="input-group"></div>
+            <span class="score" id="special_score">得分：0</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <button onclick="calculateAll()">计算总成绩</button>
+        <h2>最终成绩：<span id="finalScore">0</span> 分</h2>
+    </div>
+
+    <script>
+        // 完整评分标准数据（修复版）
+        const scoreRules = {
+            "1000米/800米": {
+                "男子": [
+                    [9999, 18], [380,18], [350,20], [340,20.5], [330,21], [320,21.5],
+                    [315,22], [310,22.5], [305,23], [300,24], [295,24.5], [290,25],
+                    [285,25.5], [280,26], [275,26.5], [270,27], [265,27.5], [260,28],
+                    [255,28.5], [250,29], [245,29.5], [0,30]
+                ].sort((a,b) => b[0] - a[0]),
+                "女子": [
+                    [9999, 18], [370,18], [340,20], [330,20.5], [320,21], [310,21.5],
+                    [305,22], [300,22.5], [295,23], [290,24], [285,24.5], [280,25],
+                    [275,25.5], [270,26], [265,26.5], [260,27], [255,27.5], [250,28],
+                    [245,28.5], [240,29], [235,29.5], [0,30]
+                ].sort((a,b) => b[0] - a[0])
+            },
+            "跳绳": {
+                "男子": [[180,10],[160,9.5],[140,9],[131,8.5],[122,8]],
+                "女子": [[172,10],[153,9.5],[133,9],[124,8.5],[114,8]]
+            },
+            "实心球": {
+                "男子": [[10.2,10],[9.8,9.5],[9.4,9],[9.0,8.5],[8.6,8]],
+                "女子": [[7.2,10],[6.9,9.5],[6.6,9],[6.3,8.5],[6.0,8]]
+            },
+            "立定跳远": {
+                "男子": [[2.46,10],[2.41,9.5],[2.36,9],[2.29,8.5],[2.24,8]],
+                "女子": [[1.99,10],[1.95,9.5],[1.90,9],[1.85,8.5],[1.80,8]]
+            },
+            "坐位体前屈": {
+                "男子": [[21.6,10],[20.5,9.5],[19.3,9],[17.8,8.5],[16.5,8]],
+                "女子": [[23.5,10],[22.4,9.5],[21.2,9],[20.1,8.5],[19.0,8]]
+            },
+            "足球": {
+                "男子": [[8.0,20],[8.5,19],[9.0,18],[9.5,17],[10.0,16]],
+                "女子": [[9.2,20],[10.0,19],[10.8,18],[11.6,17],[12.4,16]]
+            },
+            "篮球": {
+                "男子": [[12.2,20],[12.5,19],[12.8,18],[13.1,17],[13.4,16]],
+                "女子": [[13.4,20],[13.8,19],[14.4,18],[15.0,17],[15.8,16]]
+            },
+            "游泳": {
+                "男子": [[50,20],[55,19],[60,18],[65,17],[75,16]],
+                "女子": [[60,20],[65,19],[70,18],[75,17],[85,16]]
+            },
+            "轮滑": {
+                "男子": [[6.5,20],[7.6,19],[8.8,18],[9.7,17],[10.7,16]],
+                "女子": [[7.1,20],[8.2,19],[9.4,18],[10.3,17],[11.3,16]]
+            }
+        };
+
+        // 动态创建输入框（修复版）
+        function createInput(type) {
+            const containerMap = {
+                quality1: "quality1_input",
+                quality2: "quality2_input",
+                special: "special_input"
+            };
+            const container = document.getElementById(containerMap[type]);
+            const project = document.getElementById(type).value;
+            
+            let html = "";
+            if (!project) {
+                container.innerHTML = "";
+                return;
+            }
+
+            if (["足球","篮球","游泳","轮滑"].includes(project)) {
+                html = `<input type="number" step="0.1" placeholder="成绩（秒）">`;
+            } else if (["实心球","立定跳远"].includes(project)) {
+                html = `<input type="number" step="0.1" placeholder="成绩（米）">`;
+            } else {
+                html = `<input type="number" placeholder="成绩">`;
+            }
+            container.innerHTML = html;
+
+            // 绑定实时计算
+            const input = container.querySelector('input');
+            if (input) {
+                input.addEventListener('input', () => {
+                    calculateSingleScore(type, project, `${type}_score`);
+                });
+            }
+        }
+
+        // 实时计算单个项目得分
+        function calculateSingleScore(type, project, displayId) {
+            const gender = document.getElementById("gender").value;
+            let value = 0;
+            
+            if (type === 'run') {
+                const min = parseInt(document.getElementById('run_min').value) || 0;
+                const sec = Math.min(59, parseInt(document.getElementById('run_sec').value) || 0);
+                value = min * 60 + sec;
+            } else {
+                const input = document.querySelector(`#${type}_input input`);
+                value = parseFloat(input?.value) || 0;
+            }
+
+            const score = calculateScore(project, gender, value);
+            document.getElementById(displayId).textContent = `得分：${score}`;
+        }
+
+        // 得分计算核心逻辑（修复版）
+        function calculateScore(project, gender, value) {
+            const rules = scoreRules[project]?.[gender] || [];
+            for (let [threshold, score] of rules) {
+                // 特殊处理跑步项目（数值越大成绩越差）
+                if (project === "1000米/800米") {
+                    if (value >= threshold) return score;
+                } 
+                // 其他项目（数值越大成绩越好）
+                else {
+                    if (value >= threshold) return score;
+                }
+            }
+            return 0;
+        }
+
+        // 计算总成绩（修复版）
+        function calculateAll() {
+            let total = 0;
+            const gender = document.getElementById("gender").value;
+
+            // 必考项目计算
+            const runMin = parseInt(document.getElementById('run_min').value) || 0;
+            const runSec = Math.min(59, parseInt(document.getElementById('run_sec').value) || 0);
+            const runTotal = runMin * 60 + runSec;
+            total += calculateScore("1000米/800米", gender, runTotal);
+
+            // 素质项目计算
+            [1, 2].forEach(num => {
+                const project = document.getElementById(`quality${num}`).value;
+                if (project) {
+                    const input = document.querySelector(`#quality${num}_input input`);
+                    const value = parseFloat(input?.value) || 0;
+                    total += calculateScore(project, gender, value);
+                }
+            });
+
+            // 专项项目计算
+            const specialProject = document.getElementById('special').value;
+            if (specialProject) {
+                const input = document.querySelector('#special_input input');
+                const value = parseFloat(input?.value) || 0;
+                total += calculateScore(specialProject, gender, value);
+            }
+
+            document.getElementById('finalScore').textContent = total;
+        }
+
+        // 初始化事件绑定
+        document.addEventListener('DOMContentLoaded', () => {
+            // 绑定必考项目实时计算
+            ['run_min', 'run_sec'].forEach(id => {
+                document.getElementById(id).addEventListener('input', () => {
+                    calculateSingleScore('run', "1000米/800米", 'run_score');
+                });
+            });
+            
+            // 初始化动态输入
+            ['quality1', 'quality2', 'special'].forEach(type => {
+                const select = document.getElementById(type);
+                select.value = "";
+                select.dispatchEvent(new Event('change'));
+            });
+        });
+    </script>
+</body>
+</html>
